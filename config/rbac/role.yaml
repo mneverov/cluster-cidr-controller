@@ -5,7 +5,14 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - networking.x-k8s.io
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - cluster.cidr.x-k8s.io
   resources:
   - clustercidrs
   verbs:
@@ -17,8 +24,10 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cluster.networking.x-k8s.io
+  - ""
   resources:
-  - clustercidrs/finalizers
+  - nodes
   verbs:
-  - update
+  - get
+  - list
+  - watch
