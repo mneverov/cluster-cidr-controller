@@ -27,7 +27,7 @@ import (
 	"github.com/mneverov/cluster-cidr-controller/pkg/controller/ipam/test"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1alpha1 "k8s.io/api/networking/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,16 +63,16 @@ type testClusterCIDR struct {
 
 type testNodeSelectorRequirement struct {
 	key      string
-	operator v1.NodeSelectorOperator
+	operator corev1.NodeSelectorOperator
 	values   []string
 }
 
 func getTestNodeSelector(requirements []testNodeSelectorRequirement) string {
-	testNodeSelector := &v1.NodeSelector{}
+	testNodeSelector := &corev1.NodeSelector{}
 
 	for _, nsr := range requirements {
-		nst := v1.NodeSelectorTerm{
-			MatchExpressions: []v1.NodeSelectorRequirement{
+		nst := corev1.NodeSelectorTerm{
+			MatchExpressions: []corev1.NodeSelectorRequirement{
 				{
 					Key:      nsr.key,
 					Operator: nsr.operator,
@@ -118,7 +118,7 @@ func getClusterCIDRList(nodeName string, cidrMap map[string][]*multicidrset.Clus
 	labelSelector := getTestNodeSelector([]testNodeSelectorRequirement{
 		{
 			key:      "testLabel-0",
-			operator: v1.NodeSelectorOpIn,
+			operator: corev1.NodeSelectorOpIn,
 			values:   []string{nodeName},
 		},
 	})
@@ -134,7 +134,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 		{
 			description: "success, single stack no node allocation",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -155,7 +155,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -173,7 +173,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 		{
 			description: "success, dual stack no node allocation",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -194,7 +194,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -213,7 +213,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 		{
 			description: "success, single stack correct node allocation",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -221,7 +221,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 								"testLabel-0": "node0",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"10.10.0.1/24"},
 						},
 					},
@@ -237,7 +237,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -255,7 +255,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 		{
 			description: "success, dual stack both allocated correctly",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -263,7 +263,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 								"testLabel-0": "node0",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"10.10.0.1/24", "ace:cab:deca::1/120"},
 						},
 					},
@@ -279,7 +279,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -299,7 +299,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 		{
 			description: "fail, single stack incorrect node allocation",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -307,7 +307,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 								"testLabel-0": "node0",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"172.10.0.1/24"},
 						},
 					},
@@ -323,7 +323,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -342,7 +342,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 			description: "fail, dualstack node allocating from non existing cidr",
 
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -350,7 +350,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 								"testLabel-0": "node0",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"10.10.0.1/24", "a00::/86"},
 						},
 					},
@@ -366,7 +366,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -386,7 +386,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 			description: "fail, dualstack node allocating bad v4",
 
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -394,7 +394,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 								"testLabel-0": "node0",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"172.10.0.1/24", "ace:cab:deca::1/120"},
 						},
 					},
@@ -410,7 +410,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -430,7 +430,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 			description: "fail, dualstack node allocating bad v6",
 
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -438,7 +438,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 								"testLabel-0": "node0",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"10.10.0.1/24", "cdd::/86"},
 						},
 					},
@@ -454,7 +454,7 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -513,7 +513,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "When there's no ServiceCIDR return first CIDR in range",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -534,7 +534,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -552,7 +552,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Correctly filter out ServiceCIDR",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -577,7 +577,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -596,7 +596,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Correctly ignore already allocated CIDRs",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -620,7 +620,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -641,7 +641,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Dualstack CIDRs, prioritize clusterCIDR with higher label match count",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -667,7 +667,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -681,12 +681,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -706,7 +706,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Dualstack CIDRs, prioritize clusterCIDR with higher label match count, overlapping CIDRs",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -732,7 +732,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -746,12 +746,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -775,7 +775,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Dualstack CIDRs, clusterCIDR with equal label match count, prioritize clusterCIDR with fewer allocatable pod CIDRs",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -801,12 +801,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -820,12 +820,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-2",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label2"},
 						},
 					}): {
@@ -845,7 +845,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Dualstack CIDRs, clusterCIDR with equal label count, non comparable allocatable pod CIDRs, prioritize clusterCIDR with lower perNodeMaskSize",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -871,12 +871,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -889,12 +889,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-2",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label2"},
 						},
 					}): {
@@ -914,7 +914,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Dualstack CIDRs, clusterCIDR with equal label count and allocatable pod CIDRs, prioritize clusterCIDR with lower perNodeMaskSize",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -940,12 +940,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -959,12 +959,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-2",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label2"},
 						},
 					}): {
@@ -984,7 +984,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Dualstack CIDRs, clusterCIDR with equal label count, allocatable pod CIDRs and allocatable IPs, prioritize clusterCIDR with lower alphanumeric label",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -1010,12 +1010,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -1029,12 +1029,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-2",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label2"},
 						},
 					}): {
@@ -1054,7 +1054,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "Dualstack CIDRs, clusterCIDR with equal label count, allocatable pod CIDRs, allocatable IPs and labels, prioritize clusterCIDR with smaller IP",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -1080,12 +1080,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -1099,12 +1099,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 						{
 							key:      "testLabel-1",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"label1"},
 						},
 					}): {
@@ -1124,7 +1124,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		{
 			description: "no double counting",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -1132,7 +1132,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 								"testLabel-0": "nodepool1",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"10.10.0.0/24"},
 						},
 					},
@@ -1143,7 +1143,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 								"testLabel-0": "nodepool1",
 							},
 						},
-						Spec: v1.NodeSpec{
+						Spec: corev1.NodeSpec{
 							PodCIDRs: []string{"10.10.2.0/24"},
 						},
 					},
@@ -1167,7 +1167,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"nodepool1"},
 						},
 					}): {
@@ -1281,7 +1281,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRFailure(t *testing.T) {
 		{
 			description: "When there's no ServiceCIDR return first CIDR in range",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -1302,7 +1302,7 @@ func TestMultiCIDRAllocateOrOccupyCIDRFailure(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -1419,7 +1419,7 @@ func TestMultiCIDRReleaseCIDRSuccess(t *testing.T) {
 		{
 			description: "Correctly release preallocated CIDR",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -1440,7 +1440,7 @@ func TestMultiCIDRReleaseCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -1465,7 +1465,7 @@ func TestMultiCIDRReleaseCIDRSuccess(t *testing.T) {
 		{
 			description: "Correctly recycle CIDR",
 			fakeNodeHandler: &test.FakeNodeHandler{
-				Existing: []*v1.Node{
+				Existing: []*corev1.Node{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "node0",
@@ -1486,7 +1486,7 @@ func TestMultiCIDRReleaseCIDRSuccess(t *testing.T) {
 					getTestNodeSelector([]testNodeSelectorRequirement{
 						{
 							key:      "testLabel-0",
-							operator: v1.NodeSelectorOpIn,
+							operator: corev1.NodeSelectorOpIn,
 							values:   []string{"node0"},
 						},
 					}): {
@@ -1573,7 +1573,7 @@ func TestMultiCIDRReleaseCIDRSuccess(t *testing.T) {
 		}
 
 		for _, cidrToRelease := range tc.cidrsToRelease {
-			nodeToRelease := v1.Node{
+			nodeToRelease := corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "fakeNode",
 					Labels: map[string]string{
@@ -1704,12 +1704,12 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 		},
 		{
 			name:    "valid IPv4 ClusterCIDR with NodeSelector",
-			ccc:     makeClusterCIDR("ipv4-ccc-label", "10.3.0.0/16", "", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"})),
+			ccc:     makeClusterCIDR("ipv4-ccc-label", "10.3.0.0/16", "", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"})),
 			wantErr: false,
 		},
 		{
 			name:    "valid IPv4 ClusterCIDR with overlapping CIDRs",
-			ccc:     makeClusterCIDR("ipv4-ccc-overlap", "10.2.0.0/24", "", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"})),
+			ccc:     makeClusterCIDR("ipv4-ccc-overlap", "10.2.0.0/24", "", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"})),
 			wantErr: false,
 		},
 		{
@@ -1719,12 +1719,12 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 		},
 		{
 			name:    "valid IPv6 ClusterCIDR with NodeSelector",
-			ccc:     makeClusterCIDR("ipv6-ccc-label", "", "fd00:2::/112", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"})),
+			ccc:     makeClusterCIDR("ipv6-ccc-label", "", "fd00:2::/112", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"})),
 			wantErr: false,
 		},
 		{
 			name:    "valid IPv6 ClusterCIDR with overlapping CIDRs",
-			ccc:     makeClusterCIDR("ipv6-ccc-overlap", "", "fd00:1:1::/112", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"})),
+			ccc:     makeClusterCIDR("ipv6-ccc-overlap", "", "fd00:1:1::/112", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"})),
 			wantErr: false,
 		},
 		{
@@ -1734,12 +1734,12 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 		},
 		{
 			name:    "valid DualStack ClusterCIDR with NodeSelector",
-			ccc:     makeClusterCIDR("dual-ccc-label", "10.3.0.0/16", "fd00:2::/112", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"})),
+			ccc:     makeClusterCIDR("dual-ccc-label", "10.3.0.0/16", "fd00:2::/112", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"})),
 			wantErr: false,
 		},
 		{
 			name:    "valid Dualstack ClusterCIDR with overlapping CIDRs",
-			ccc:     makeClusterCIDR("dual-ccc-overlap", "10.2.0.0/16", "fd00:1:1::/112", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"})),
+			ccc:     makeClusterCIDR("dual-ccc-overlap", "10.2.0.0/16", "fd00:1:1::/112", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"})),
 			wantErr: false,
 		},
 		// invalid ClusterCIDRs.
@@ -1760,7 +1760,7 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 		},
 		{
 			name:    "invalid dualstack ClusterCIDR",
-			ccc:     makeClusterCIDR("invalid-dual-ccc", "10.2.0.0/16", "aaaaa:1:1::/112", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"})),
+			ccc:     makeClusterCIDR("invalid-dual-ccc", "10.2.0.0/16", "aaaaa:1:1::/112", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"})),
 			wantErr: true,
 		},
 	}
@@ -1768,7 +1768,7 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 	client, cccController := newController(ctx)
 	for _, tc := range tests {
 		cccController.clusterCIDRStore.Add(tc.ccc)
-		err := cccController.syncClusterCIDR(ctx, tc.ccc.Name)
+		err := cccController.syncClusterCIDRByKey(ctx, tc.ccc.Name)
 		if tc.wantErr {
 			assert.Error(t, err)
 			continue
@@ -1783,38 +1783,38 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 	}
 }
 
-// Ensure syncClusterCIDR for ClusterCIDR delete removes the ClusterCIDR.
+// Ensure syncClusterCIDRByKey for ClusterCIDR delete removes the ClusterCIDR.
 func TestSyncClusterCIDRDelete(t *testing.T) {
 	_, ctx := ktesting.NewTestContext(t)
 	_, cccController := newController(ctx)
 
-	testCCC := makeClusterCIDR("testing-1", "10.1.0.0/16", "", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"}))
+	testCCC := makeClusterCIDR("testing-1", "10.1.0.0/16", "", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"}))
 
 	cccController.clusterCIDRStore.Add(testCCC)
-	err := cccController.syncClusterCIDR(ctx, testCCC.Name)
+	err := cccController.syncClusterCIDRByKey(ctx, testCCC.Name)
 	assert.NoError(t, err)
 
 	deletionTimestamp := metav1.Now()
 	testCCC.DeletionTimestamp = &deletionTimestamp
 	cccController.clusterCIDRStore.Update(testCCC)
-	err = cccController.syncClusterCIDR(ctx, testCCC.Name)
+	err = cccController.syncClusterCIDRByKey(ctx, testCCC.Name)
 	assert.NoError(t, err)
 }
 
-// Ensure syncClusterCIDR for ClusterCIDR delete does not remove ClusterCIDR
+// Ensure syncClusterCIDRByKey for ClusterCIDR delete does not remove ClusterCIDR
 // if a node is associated with the ClusterCIDR.
 func TestSyncClusterCIDRDeleteWithNodesAssociated(t *testing.T) {
 	_, ctx := ktesting.NewTestContext(t)
 	client, cccController := newController(ctx)
 
-	testCCC := makeClusterCIDR("testing-1", "10.1.0.0/16", "", 8, makeNodeSelector("foo", v1.NodeSelectorOpIn, []string{"bar"}))
+	testCCC := makeClusterCIDR("testing-1", "10.1.0.0/16", "", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"}))
 
 	cccController.clusterCIDRStore.Add(testCCC)
-	err := cccController.syncClusterCIDR(ctx, testCCC.Name)
+	err := cccController.syncClusterCIDRByKey(ctx, testCCC.Name)
 	assert.NoError(t, err)
 
 	// Mock the IPAM controller behavior associating node with ClusterCIDR.
-	nodeSelectorKey, _ := cccController.nodeSelectorKey(testCCC)
+	nodeSelectorKey, _ := cccController.nodeSelectorKey(convertToV1CIDR(testCCC))
 	clusterCIDRs := cccController.cidrMap[nodeSelectorKey]
 	clusterCIDRs[0].AssociatedNodes["test-node"] = true
 
@@ -1824,7 +1824,7 @@ func TestSyncClusterCIDRDeleteWithNodesAssociated(t *testing.T) {
 	deletionTimestamp := metav1.Now()
 	createdCCC.DeletionTimestamp = &deletionTimestamp
 	cccController.clusterCIDRStore.Update(createdCCC)
-	err = cccController.syncClusterCIDR(ctx, createdCCC.Name)
+	err = cccController.syncClusterCIDRByKey(ctx, createdCCC.Name)
 	assert.Error(t, err, fmt.Sprintf("ClusterCIDR %s marked as terminating, won't be deleted until all associated nodes are deleted", createdCCC.Name))
 }
 
@@ -1842,11 +1842,11 @@ func expectActions(t *testing.T, actions []k8stesting.Action, num int, verb, res
 	}
 }
 
-func makeNodeSelector(key string, op v1.NodeSelectorOperator, values []string) *v1.NodeSelector {
-	return &v1.NodeSelector{
-		NodeSelectorTerms: []v1.NodeSelectorTerm{
+func makeNodeSelector(key string, op corev1.NodeSelectorOperator, values []string) *corev1.NodeSelector {
+	return &corev1.NodeSelector{
+		NodeSelectorTerms: []corev1.NodeSelectorTerm{
 			{
-				MatchExpressions: []v1.NodeSelectorRequirement{
+				MatchExpressions: []corev1.NodeSelectorRequirement{
 					{
 						Key:      key,
 						Operator: op,
@@ -1859,7 +1859,7 @@ func makeNodeSelector(key string, op v1.NodeSelectorOperator, values []string) *
 }
 
 // makeClusterCIDR returns a mock ClusterCIDR object.
-func makeClusterCIDR(cccName, ipv4CIDR, ipv6CIDR string, perNodeHostBits int32, nodeSelector *v1.NodeSelector) *networkingv1alpha1.ClusterCIDR {
+func makeClusterCIDR(cccName, ipv4CIDR, ipv6CIDR string, perNodeHostBits int32, nodeSelector *corev1.NodeSelector) *networkingv1alpha1.ClusterCIDR {
 	testCCC := &networkingv1alpha1.ClusterCIDR{
 		ObjectMeta: metav1.ObjectMeta{Name: cccName},
 		Spec:       networkingv1alpha1.ClusterCIDRSpec{},
