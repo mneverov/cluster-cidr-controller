@@ -12,7 +12,15 @@ rules:
   - create
   - patch
 - apiGroups:
-  - cluster.cidr.x-k8s.io
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.x-k8s.io
   resources:
   - clustercidrs
   verbs:
@@ -22,12 +30,4 @@ rules:
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
-  - list
   - watch

@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-var clusterCidrLogger = logf.Log.WithName("cronjob-resource")
+var clusterCidrLogger = logf.Log.WithName("clustercidr-validator")
 
 var _ webhook.Defaulter = &v1.ClusterCIDR{}
 
@@ -32,7 +32,7 @@ func (v *ClusterCIDRValidator) SetupWithManager(mgr manager.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:groups=cluster.cidr.x-k8s.io,versions=v1,resources=clustercidrs,verbs=create;update;delete,name=validate-clustercidr.cluster.cidr.x-k8s.io,path=/validate-cluster-cidr-x-k8s-io-v1-clustercidr,mutating=false,failurePolicy=fail,sideEffects=None,admissionReviewVersions=v1
+// +kubebuilder:webhook:groups=clustercidr.x-k8s.io,versions=v1,resources=clustercidrs,verbs=create;update;delete,name=validate.clustercidr.x-k8s.io,path=/validate-clustercidr-x-k8s-io-v1-clustercidr,mutating=false,failurePolicy=fail,sideEffects=None,admissionReviewVersions=v1
 
 // ValidateCreate implements webhook.CustomValidator.
 func (v *ClusterCIDRValidator) ValidateCreate(_ context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
@@ -70,6 +70,6 @@ func convertToError(name string, errors field.ErrorList) error {
 	}
 
 	return apierrors.NewInvalid(
-		schema.GroupKind{Group: "cluster.cidr.x-k8s.io", Kind: "ClusterCIDR"},
+		schema.GroupKind{Group: "clustercidr.x-k8s.io", Kind: "ClusterCIDR"},
 		name, errors)
 }

@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: clustercidrs.cluster.cidr.x-k8s.io
+  name: clustercidrs.networking.x-k8s.io
 spec:
-  group: cluster.cidr.x-k8s.io
+  group: networking.x-k8s.io
   names:
     kind: ClusterCIDR
     listKind: ClusterCIDRList
