@@ -3,7 +3,7 @@ package ipam
 import (
 	"context"
 
-	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/v1"
+	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	corev1 "k8s.io/api/core/v1"

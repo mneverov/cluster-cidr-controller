@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/v1"
+	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

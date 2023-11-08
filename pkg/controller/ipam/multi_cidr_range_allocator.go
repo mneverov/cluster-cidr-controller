@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mneverov/cluster-cidr-controller/pkg/apis/v1"
+	"github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
 	cidrset "github.com/mneverov/cluster-cidr-controller/pkg/controller/ipam/multicidrset"
 	controllerutil "github.com/mneverov/cluster-cidr-controller/pkg/util/node"
 	"github.com/mneverov/cluster-cidr-controller/pkg/util/slice"
