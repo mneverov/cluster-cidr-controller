@@ -27,12 +27,14 @@ import (
 	"time"
 
 	"github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
+	clustercidrclient "github.com/mneverov/cluster-cidr-controller/pkg/client/clientset/versioned/typed/clustercidr/v1"
+	clustercidrinformers "github.com/mneverov/cluster-cidr-controller/pkg/client/informers/externalversions/clustercidr/v1"
+	clustercidrlisters "github.com/mneverov/cluster-cidr-controller/pkg/client/listers/clustercidr/v1"
 	cidrset "github.com/mneverov/cluster-cidr-controller/pkg/controller/ipam/multicidrset"
 	controllerutil "github.com/mneverov/cluster-cidr-controller/pkg/util/node"
 	"github.com/mneverov/cluster-cidr-controller/pkg/util/slice"
 
 	corev1 "k8s.io/api/core/v1"
-	networkingv1alpha1 "k8s.io/api/networking/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -42,12 +44,10 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	informers "k8s.io/client-go/informers/core/v1"
-	networkinginformers "k8s.io/client-go/informers/networking/v1alpha1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	networkinglisters "k8s.io/client-go/listers/networking/v1alpha1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -122,13 +122,14 @@ type multiCIDRNodeReservedCIDRs struct {
 }
 
 type multiCIDRRangeAllocator struct {
-	client clientset.Interface
+	client        clientset.Interface
+	networkClient clustercidrclient.ClusterCIDRInterface
 	// nodeLister is able to list/get nodes and is populated by the shared informer passed to controller.
 	nodeLister corelisters.NodeLister
 	// nodesSynced returns true if the node shared informer has been synced at least once.
 	nodesSynced cache.InformerSynced
 	// clusterCIDRLister is able to list/get clustercidrs and is populated by the shared informer passed to controller.
-	clusterCIDRLister networkinglisters.ClusterCIDRLister
+	clusterCIDRLister clustercidrlisters.ClusterCIDRLister
 	// clusterCIDRSynced returns true if the clustercidr shared informer has been synced at least once.
 	clusterCIDRSynced cache.InformerSynced
 	// Channel that is used to pass updating Nodes and their reserved CIDRs to the background.
@@ -153,8 +154,9 @@ type multiCIDRRangeAllocator struct {
 func NewMultiCIDRRangeAllocator(
 	ctx context.Context,
 	client clientset.Interface,
+	networkClient clustercidrclient.ClusterCIDRInterface,
 	nodeInformer informers.NodeInformer,
-	clusterCIDRInformer networkinginformers.ClusterCIDRInformer,
+	clusterCIDRInformer clustercidrinformers.ClusterCIDRInformer,
 	allocatorParams CIDRAllocatorParams,
 	nodeList *corev1.NodeList,
 	testCIDRMap map[string][]*cidrset.ClusterCIDR,
@@ -162,6 +164,10 @@ func NewMultiCIDRRangeAllocator(
 	logger := klog.FromContext(ctx)
 	if client == nil {
 		logger.Error(nil, "kubeClient is nil when starting multi CIDRRangeAllocator")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+	}
+	if networkClient == nil {
+		logger.Error(nil, "networkClient is nil when starting multi CIDRRangeAllocator")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
@@ -173,6 +179,7 @@ func NewMultiCIDRRangeAllocator(
 
 	ra := &multiCIDRRangeAllocator{
 		client:                client,
+		networkClient:         networkClient,
 		nodeLister:            nodeInformer.Lister(),
 		nodesSynced:           nodeInformer.Informer().HasSynced,
 		clusterCIDRLister:     clusterCIDRInformer.Lister(),
@@ -193,7 +200,7 @@ func NewMultiCIDRRangeAllocator(
 		logger.Info("TestCIDRMap should only be set for testing purposes, if this is seen in production logs, it might be a misconfiguration or a bug")
 	}
 
-	ccList, err := listClusterCIDRs(ctx, client)
+	ccList, err := listClusterCIDRs(ctx, networkClient)
 	if err != nil {
 		return nil, err
 	}
@@ -501,13 +508,11 @@ func (r *multiCIDRRangeAllocator) syncClusterCIDRByKey(ctx context.Context, key 
 		return err
 	}
 
-	cidr := convertToV1CIDR(clusterCIDR)
-
 	// Check the DeletionTimestamp to determine if object is under deletion.
 	if !clusterCIDR.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, cidr)
+		return r.reconcileDelete(ctx, clusterCIDR)
 	}
-	return r.reconcileCreate(ctx, cidr)
+	return r.reconcileCreate(ctx, clusterCIDR)
 }
 
 func (r *multiCIDRRangeAllocator) syncClusterCIDR(ctx context.Context, clusterCIDR *v1.ClusterCIDR) error {
@@ -1143,17 +1148,16 @@ func (r *multiCIDRRangeAllocator) createClusterCIDR(ctx context.Context, cluster
 		updatedClusterCIDR.ObjectMeta.Finalizers = append(clusterCIDR.ObjectMeta.Finalizers, clusterCIDRFinalizer) //nolint
 	}
 
-	updatedCIDR := convertToNetworkingV1Alpha1CIDR(updatedClusterCIDR)
 	logger := klog.FromContext(ctx)
 	if updatedClusterCIDR.ResourceVersion == "" {
 		// Create is only used for creating default ClusterCIDR.
-		if _, err := r.client.NetworkingV1alpha1().ClusterCIDRs().Create(ctx, updatedCIDR, metav1.CreateOptions{}); err != nil {
+		if _, err := r.networkClient.Create(ctx, updatedClusterCIDR, metav1.CreateOptions{}); err != nil {
 			logger.V(2).Info("Error creating ClusterCIDR", "clusterCIDR", klog.KObj(clusterCIDR), "err", err)
 			return err
 		}
 	} else {
 		// Update the ClusterCIDR object when called from reconcileCreate.
-		if _, err := r.client.NetworkingV1alpha1().ClusterCIDRs().Update(ctx, updatedCIDR, metav1.UpdateOptions{}); err != nil {
+		if _, err := r.networkClient.Update(ctx, updatedClusterCIDR, metav1.UpdateOptions{}); err != nil {
 			logger.V(2).Info("Error creating ClusterCIDR", "clusterCIDR", clusterCIDR.Name, "err", err)
 			return err
 		}
@@ -1225,7 +1229,7 @@ func (r *multiCIDRRangeAllocator) reconcileDelete(ctx context.Context, clusterCI
 		// Remove the finalizer as delete is successful.
 		cccCopy := clusterCIDR.DeepCopy()
 		cccCopy.ObjectMeta.Finalizers = slice.RemoveString(cccCopy.ObjectMeta.Finalizers, clusterCIDRFinalizer, nil)
-		if _, err := r.client.NetworkingV1alpha1().ClusterCIDRs().Update(ctx, convertToNetworkingV1Alpha1CIDR(cccCopy), metav1.UpdateOptions{}); err != nil {
+		if _, err := r.networkClient.Update(ctx, cccCopy, metav1.UpdateOptions{}); err != nil {
 			logger.V(2).Info("Error removing finalizer for ClusterCIDR", "clusterCIDR", clusterCIDR.Name, "err", err)
 			return err
 		}
@@ -1292,8 +1296,8 @@ func (r *multiCIDRRangeAllocator) nodeSelectorKey(clusterCIDR *v1.ClusterCIDR) (
 	return nodeSelector.String(), nil
 }
 
-func listClusterCIDRs(ctx context.Context, kubeClient clientset.Interface) (*v1.ClusterCIDRList, error) {
-	var clusterCIDRList *networkingv1alpha1.ClusterCIDRList
+func listClusterCIDRs(ctx context.Context, networkClient clustercidrclient.ClusterCIDRInterface) (*v1.ClusterCIDRList, error) {
+	var clusterCIDRList *v1.ClusterCIDRList
 	// We must poll because apiserver might not be up. This error causes
 	// controller manager to restart.
 	startTimestamp := time.Now()
@@ -1308,7 +1312,7 @@ func listClusterCIDRs(ctx context.Context, kubeClient clientset.Interface) (*v1.
 	logger := klog.FromContext(ctx)
 	if pollErr := wait.ExponentialBackoff(backoff, func() (bool, error) {
 		var err error
-		clusterCIDRList, err = kubeClient.NetworkingV1alpha1().ClusterCIDRs().List(ctx, metav1.ListOptions{
+		clusterCIDRList, err = networkClient.List(ctx, metav1.ListOptions{
 			FieldSelector: fields.Everything().String(),
 			LabelSelector: labels.Everything().String(),
 		})
@@ -1322,7 +1326,7 @@ func listClusterCIDRs(ctx context.Context, kubeClient clientset.Interface) (*v1.
 		return nil, fmt.Errorf("failed to list all clusterCIDRs in %v, cannot proceed without updating CIDR map",
 			apiserverStartupGracePeriod)
 	}
-	return convertToV1CIDRList(clusterCIDRList), nil
+	return clusterCIDRList, nil
 }
 
 // nodeSelectorRequirementsAsLabelRequirements converts the NodeSelectorRequirement
@@ -1394,46 +1398,4 @@ func ipnetToStringList(inCIDRs []*net.IPNet) []string {
 		outCIDRs[idx] = inCIDR.String()
 	}
 	return outCIDRs
-}
-
-func convertToV1CIDR(clusterCIDR *networkingv1alpha1.ClusterCIDR) *v1.ClusterCIDR {
-	cidr := &v1.ClusterCIDR{
-		TypeMeta:   clusterCIDR.TypeMeta,
-		ObjectMeta: clusterCIDR.ObjectMeta,
-		Spec: v1.ClusterCIDRSpec{
-			NodeSelector:    clusterCIDR.Spec.NodeSelector,
-			PerNodeHostBits: clusterCIDR.Spec.PerNodeHostBits,
-			IPv4:            clusterCIDR.Spec.IPv4,
-			IPv6:            clusterCIDR.Spec.IPv6,
-		},
-	}
-	return cidr
-}
-
-func convertToV1CIDRList(clusterCIDRs *networkingv1alpha1.ClusterCIDRList) *v1.ClusterCIDRList {
-	cidrs := &v1.ClusterCIDRList{
-		TypeMeta: clusterCIDRs.TypeMeta,
-		ListMeta: clusterCIDRs.ListMeta,
-		Items:    []v1.ClusterCIDR{},
-	}
-	for _, clusterCIDR := range clusterCIDRs.Items {
-		cidr := convertToV1CIDR(&clusterCIDR)
-		cidrs.Items = append(cidrs.Items, *cidr)
-	}
-
-	return cidrs
-}
-
-func convertToNetworkingV1Alpha1CIDR(clusterCIDR *v1.ClusterCIDR) *networkingv1alpha1.ClusterCIDR {
-	cidr := &networkingv1alpha1.ClusterCIDR{
-		TypeMeta:   clusterCIDR.TypeMeta,
-		ObjectMeta: clusterCIDR.ObjectMeta,
-		Spec: networkingv1alpha1.ClusterCIDRSpec{
-			NodeSelector:    clusterCIDR.Spec.NodeSelector,
-			PerNodeHostBits: clusterCIDR.Spec.PerNodeHostBits,
-			IPv4:            clusterCIDR.Spec.IPv4,
-			IPv6:            clusterCIDR.Spec.IPv6,
-		},
-	}
-	return cidr
 }

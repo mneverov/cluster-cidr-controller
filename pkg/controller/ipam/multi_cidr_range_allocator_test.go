@@ -19,16 +19,19 @@ package ipam
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
 	"time"
 
+	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
+	clustercidrfake "github.com/mneverov/cluster-cidr-controller/pkg/client/clientset/versioned/fake"
+	clustercidrinformer "github.com/mneverov/cluster-cidr-controller/pkg/client/informers/externalversions"
 	"github.com/mneverov/cluster-cidr-controller/pkg/controller/ipam/multicidrset"
 	"github.com/mneverov/cluster-cidr-controller/pkg/controller/ipam/test"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1alpha1 "k8s.io/api/networking/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -478,12 +481,12 @@ func TestMultiCIDROccupyPreExistingCIDR(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			// Initialize the range allocator.
 			fakeNodeInformer := test.FakeNodeInformer(tc.fakeNodeHandler)
-			fakeClient := &fake.Clientset{}
-			fakeInformerFactory := informers.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
-			fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1alpha1().ClusterCIDRs()
+			fakeClient := &clustercidrfake.Clientset{}
+			fakeInformerFactory := clustercidrinformer.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
+			fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1().ClusterCIDRs()
 			nodeList, _ := tc.fakeNodeHandler.List(context.TODO(), metav1.ListOptions{})
-
-			_, err := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, fakeNodeInformer, fakeClusterCIDRInformer, tc.allocatorParams, nodeList, tc.testCIDRMap)
+			fakeCIDRClient := clustercidrfake.NewSimpleClientset().NetworkingV1().ClusterCIDRs()
+			_, err := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, fakeCIDRClient, fakeNodeInformer, fakeClusterCIDRInformer, tc.allocatorParams, nodeList, tc.testCIDRMap)
 			if err == nil && tc.ctrlCreateFail {
 				t.Fatalf("creating range allocator was expected to fail, but it did not")
 			}
@@ -1191,10 +1194,11 @@ func TestMultiCIDRAllocateOrOccupyCIDRSuccess(t *testing.T) {
 		nodeList, _ := tc.fakeNodeHandler.List(context.TODO(), metav1.ListOptions{})
 		// Initialize the range allocator.
 
-		fakeClient := &fake.Clientset{}
-		fakeInformerFactory := informers.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
-		fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1alpha1().ClusterCIDRs()
-		allocator, err := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, test.FakeNodeInformer(tc.fakeNodeHandler), fakeClusterCIDRInformer, tc.allocatorParams, nodeList, tc.testCIDRMap)
+		fakeClient := &clustercidrfake.Clientset{}
+		fakeInformerFactory := clustercidrinformer.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
+		fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1().ClusterCIDRs()
+		fakeCIDRClient := clustercidrfake.NewSimpleClientset().NetworkingV1().ClusterCIDRs()
+		allocator, err := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, fakeCIDRClient, test.FakeNodeInformer(tc.fakeNodeHandler), fakeClusterCIDRInformer, tc.allocatorParams, nodeList, tc.testCIDRMap)
 		if err != nil {
 			t.Errorf("%v: failed to create CIDRRangeAllocator with error %v", tc.description, err)
 			return
@@ -1322,12 +1326,12 @@ func TestMultiCIDRAllocateOrOccupyCIDRFailure(t *testing.T) {
 	logger, ctx := ktesting.NewTestContext(t)
 
 	testFunc := func(tc testCaseMultiCIDR) {
-		fakeClient := &fake.Clientset{}
-		fakeInformerFactory := informers.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
-		fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1alpha1().ClusterCIDRs()
-
+		fakeClient := &clustercidrfake.Clientset{}
+		fakeInformerFactory := clustercidrinformer.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
+		fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1().ClusterCIDRs()
+		fakeCIDRClient := clustercidrfake.NewSimpleClientset().NetworkingV1().ClusterCIDRs()
 		// Initialize the range allocator.
-		allocator, err := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, test.FakeNodeInformer(tc.fakeNodeHandler), fakeClusterCIDRInformer, tc.allocatorParams, nil, tc.testCIDRMap)
+		allocator, err := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, fakeCIDRClient, test.FakeNodeInformer(tc.fakeNodeHandler), fakeClusterCIDRInformer, tc.allocatorParams, nil, tc.testCIDRMap)
 		if err != nil {
 			t.Logf("%v: failed to create CIDRRangeAllocator with error %v", tc.description, err)
 		}
@@ -1513,11 +1517,12 @@ func TestMultiCIDRReleaseCIDRSuccess(t *testing.T) {
 	}
 	logger, ctx := ktesting.NewTestContext(t)
 	testFunc := func(tc releasetestCaseMultiCIDR) {
-		fakeClient := &fake.Clientset{}
-		fakeInformerFactory := informers.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
-		fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1alpha1().ClusterCIDRs()
+		fakeClient := &clustercidrfake.Clientset{}
+		fakeInformerFactory := clustercidrinformer.NewSharedInformerFactory(fakeClient, NoResyncPeriodFunc())
+		fakeClusterCIDRInformer := fakeInformerFactory.Networking().V1().ClusterCIDRs()
+		fakeCIDRClient := clustercidrfake.NewSimpleClientset().NetworkingV1().ClusterCIDRs()
 		// Initialize the range allocator.
-		allocator, _ := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, test.FakeNodeInformer(tc.fakeNodeHandler), fakeClusterCIDRInformer, tc.allocatorParams, nil, tc.testCIDRMap)
+		allocator, _ := NewMultiCIDRRangeAllocator(ctx, tc.fakeNodeHandler, fakeCIDRClient, test.FakeNodeInformer(tc.fakeNodeHandler), fakeClusterCIDRInformer, tc.allocatorParams, nil, tc.testCIDRMap)
 		rangeAllocator, ok := allocator.(*multiCIDRRangeAllocator)
 		if !ok {
 			t.Logf("%v: found non-default implementation of CIDRAllocator, skipping white-box test...", tc.description)
@@ -1626,19 +1631,21 @@ type clusterCIDRController struct {
 	clusterCIDRStore cache.Store
 }
 
-func newController(ctx context.Context) (*fake.Clientset, *clusterCIDRController) {
-	client := fake.NewSimpleClientset()
+func newController(ctx context.Context) (*clustercidrfake.Clientset, *clusterCIDRController) {
+	client := clustercidrfake.NewSimpleClientset()
+	informerFactory := clustercidrinformer.NewSharedInformerFactory(client, NoResyncPeriodFunc())
+	cccInformer := informerFactory.Networking().V1().ClusterCIDRs()
 
-	informerFactory := informers.NewSharedInformerFactory(client, NoResyncPeriodFunc())
-	cccInformer := informerFactory.Networking().V1alpha1().ClusterCIDRs()
 	cccIndexer := cccInformer.Informer().GetIndexer()
 
-	nodeInformer := informerFactory.Core().V1().Nodes()
+	nodeClient := fake.NewSimpleClientset()
+	nodeInformerFactory := informers.NewSharedInformerFactory(nodeClient, NoResyncPeriodFunc())
+	nodeInformer := nodeInformerFactory.Core().V1().Nodes()
 
 	// These reactors are required to mock functionality that would be covered
 	// automatically if we weren't using the fake client.
-	client.PrependReactor("create", "clustercidrs", k8stesting.ReactionFunc(func(action k8stesting.Action) (bool, runtime.Object, error) {
-		clusterCIDR := action.(k8stesting.CreateAction).GetObject().(*networkingv1alpha1.ClusterCIDR)
+	client.PrependReactor("create", "clustercidrs", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		clusterCIDR := action.(k8stesting.CreateAction).GetObject().(*v1.ClusterCIDR)
 
 		if clusterCIDR.ObjectMeta.GenerateName != "" {
 			clusterCIDR.ObjectMeta.Name = fmt.Sprintf("%s-%s", clusterCIDR.ObjectMeta.GenerateName, rand.String(8))
@@ -1648,14 +1655,14 @@ func newController(ctx context.Context) (*fake.Clientset, *clusterCIDRController
 		cccIndexer.Add(clusterCIDR)
 
 		return false, clusterCIDR, nil
-	}))
-	client.PrependReactor("update", "clustercidrs", k8stesting.ReactionFunc(func(action k8stesting.Action) (bool, runtime.Object, error) {
-		clusterCIDR := action.(k8stesting.CreateAction).GetObject().(*networkingv1alpha1.ClusterCIDR)
+	})
+	client.PrependReactor("update", "clustercidrs", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		clusterCIDR := action.(k8stesting.CreateAction).GetObject().(*v1.ClusterCIDR)
 		clusterCIDR.Generation++
 		cccIndexer.Update(clusterCIDR)
 
 		return false, clusterCIDR, nil
-	}))
+	})
 
 	_, clusterCIDR, _ := utilnet.ParseCIDRSloppy("192.168.0.0/16")
 	_, serviceCIDR, _ := utilnet.ParseCIDRSloppy("10.1.0.0/16")
@@ -1669,14 +1676,14 @@ func newController(ctx context.Context) (*fake.Clientset, *clusterCIDRController
 	testCIDRMap := make(map[string][]*multicidrset.ClusterCIDR, 0)
 
 	// Initialize the range allocator.
-	ra, _ := NewMultiCIDRRangeAllocator(ctx, client, nodeInformer, cccInformer, allocatorParams, nil, testCIDRMap)
+	ra, _ := NewMultiCIDRRangeAllocator(ctx, nodeClient, client.NetworkingV1().ClusterCIDRs(), nodeInformer, cccInformer, allocatorParams, nil, testCIDRMap)
 	cccController := ra.(*multiCIDRRangeAllocator)
 
 	cccController.clusterCIDRSynced = alwaysReady
 
 	return client, &clusterCIDRController{
 		cccController,
-		informerFactory.Networking().V1alpha1().ClusterCIDRs().Informer().GetStore(),
+		informerFactory.Networking().V1().ClusterCIDRs().Informer().GetStore(),
 	}
 }
 
@@ -1685,7 +1692,7 @@ func TestClusterCIDRDefault(t *testing.T) {
 	defaultCCC := makeClusterCIDR(defaultClusterCIDRName, "192.168.0.0/16", "", 8, nil)
 	_, ctx := ktesting.NewTestContext(t)
 	client, _ := newController(ctx)
-	createdCCC, err := client.NetworkingV1alpha1().ClusterCIDRs().Get(context.TODO(), defaultClusterCIDRName, metav1.GetOptions{})
+	createdCCC, err := client.NetworkingV1().ClusterCIDRs().Get(context.TODO(), defaultClusterCIDRName, metav1.GetOptions{})
 	assert.Nil(t, err, "Expected no error getting clustercidr objects")
 	assert.Equal(t, defaultCCC.Spec, createdCCC.Spec)
 }
@@ -1694,7 +1701,7 @@ func TestClusterCIDRDefault(t *testing.T) {
 func TestSyncClusterCIDRCreate(t *testing.T) {
 	tests := []struct {
 		name    string
-		ccc     *networkingv1alpha1.ClusterCIDR
+		ccc     *v1.ClusterCIDR
 		wantErr bool
 	}{
 		{
@@ -1776,8 +1783,8 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 		assert.NoError(t, err)
 		expectActions(t, client.Actions(), 1, "create", "clustercidrs")
 
-		createdCCC, err := client.NetworkingV1alpha1().ClusterCIDRs().Get(context.TODO(), tc.ccc.Name, metav1.GetOptions{})
-		assert.Nil(t, err, "Expected no error getting clustercidr object")
+		createdCCC, err := client.NetworkingV1().ClusterCIDRs().Get(context.TODO(), tc.ccc.Name, metav1.GetOptions{})
+		require.NoError(t, err, "Expected no error getting clustercidr object")
 		assert.Equal(t, tc.ccc.Spec, createdCCC.Spec)
 		assert.Equal(t, []string{clusterCIDRFinalizer}, createdCCC.Finalizers)
 	}
@@ -1814,11 +1821,11 @@ func TestSyncClusterCIDRDeleteWithNodesAssociated(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Mock the IPAM controller behavior associating node with ClusterCIDR.
-	nodeSelectorKey, _ := cccController.nodeSelectorKey(convertToV1CIDR(testCCC))
+	nodeSelectorKey, _ := cccController.nodeSelectorKey(testCCC)
 	clusterCIDRs := cccController.cidrMap[nodeSelectorKey]
 	clusterCIDRs[0].AssociatedNodes["test-node"] = true
 
-	createdCCC, err := client.NetworkingV1alpha1().ClusterCIDRs().Get(context.TODO(), testCCC.Name, metav1.GetOptions{})
+	createdCCC, err := client.NetworkingV1().ClusterCIDRs().Get(context.TODO(), testCCC.Name, metav1.GetOptions{})
 	assert.Nil(t, err, "Expected no error getting clustercidr object")
 
 	deletionTimestamp := metav1.Now()
@@ -1859,10 +1866,10 @@ func makeNodeSelector(key string, op corev1.NodeSelectorOperator, values []strin
 }
 
 // makeClusterCIDR returns a mock ClusterCIDR object.
-func makeClusterCIDR(cccName, ipv4CIDR, ipv6CIDR string, perNodeHostBits int32, nodeSelector *corev1.NodeSelector) *networkingv1alpha1.ClusterCIDR {
-	testCCC := &networkingv1alpha1.ClusterCIDR{
+func makeClusterCIDR(cccName, ipv4CIDR, ipv6CIDR string, perNodeHostBits int32, nodeSelector *corev1.NodeSelector) *v1.ClusterCIDR {
+	testCCC := &v1.ClusterCIDR{
 		ObjectMeta: metav1.ObjectMeta{Name: cccName},
-		Spec:       networkingv1alpha1.ClusterCIDRSpec{},
+		Spec:       v1.ClusterCIDRSpec{},
 	}
 
 	testCCC.Spec.PerNodeHostBits = perNodeHostBits
