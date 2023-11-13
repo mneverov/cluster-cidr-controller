@@ -10,12 +10,12 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-clustercidr-x-k8s-io-v1-clustercidr
+      path: /validate-clustercidr-networking-x-k8s-io-v1-clustercidr
   failurePolicy: Fail
-  name: validate.clustercidr.x-k8s.io
+  name: validate.clustercidr.networking.x-k8s.io
   rules:
   - apiGroups:
-    - clustercidr.x-k8s.io
+    - networking.x-k8s.io
     apiVersions:
     - v1
     operations:

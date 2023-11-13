@@ -5,7 +5,6 @@ import (
 	"os"
 
 	clustercidrv1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
-	"github.com/mneverov/cluster-cidr-controller/pkg/webhooks"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -69,11 +68,6 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "failed to set up ready check")
-		os.Exit(1)
-	}
-
-	if (&webhooks.ClusterCIDRValidator{}).SetupWithManager(mgr) != nil {
-		setupLog.Error(err, "failed to setup webhook", "webhook", "ClusterCIDR")
 		os.Exit(1)
 	}
 

@@ -19,10 +19,11 @@ package ipam
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
 	clustercidrfake "github.com/mneverov/cluster-cidr-controller/pkg/client/clientset/versioned/fake"
