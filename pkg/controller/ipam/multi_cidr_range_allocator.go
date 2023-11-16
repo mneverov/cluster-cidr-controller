@@ -60,8 +60,8 @@ const (
 	defaultClusterCIDRKey        = "kubernetes.io/clusterCIDR"
 	defaultClusterCIDRValue      = "default"
 	defaultClusterCIDRName       = "default-cluster-cidr"
-	defaultClusterCIDRAPIVersion = "networking.k8s.io/v1alpha1"
-	clusterCIDRFinalizer         = "networking.k8s.io/cluster-cidr-finalizer"
+	defaultClusterCIDRAPIVersion = "networking.x-k8s.io/v1"
+	clusterCIDRFinalizer         = "networking.x-k8s.io/cluster-cidr-finalizer"
 	ipv4MaxCIDRMask              = 32
 	ipv6MaxCIDRMask              = 128
 	minPerNodeHostBits           = 4

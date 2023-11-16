@@ -58,8 +58,8 @@ func newClusterCIDR() v1.ClusterCIDR {
 func TestClusterCIDRStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	apiRequest := genericapirequest.RequestInfo{
-		APIGroup:   "networking.k8s.io",
-		APIVersion: "v1alpha1",
+		APIGroup:   "networking.x-k8s.io",
+		APIVersion: "v1",
 		Resource:   "clustercidrs",
 	}
 	ctx = genericapirequest.WithRequestInfo(ctx, &apiRequest)
