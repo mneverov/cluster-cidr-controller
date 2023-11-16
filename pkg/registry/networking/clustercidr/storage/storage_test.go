@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
+	genscheme "github.com/mneverov/cluster-cidr-controller/pkg/client/clientset/versioned/scheme"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,8 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistrytest "k8s.io/apiserver/pkg/registry/generic/testing"
 	"k8s.io/apiserver/pkg/server/options"
@@ -163,9 +162,7 @@ func TestShortNames(t *testing.T) {
 }
 
 func newStorage(t *testing.T) (*REST, *etcd3testing.EtcdTestServer) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(v1.AddToScheme(scheme))
-	etcdStorage, server := newEtcdStorageForResource(t, scheme, v1.Resource("clustercidrs"))
+	etcdStorage, server := newEtcdStorageForResource(t, v1.Resource("clustercidrs"))
 	restOptions := generic.RESTOptions{
 		StorageConfig:           etcdStorage,
 		Decorator:               generic.UndecoratedStorage,
@@ -173,19 +170,19 @@ func newStorage(t *testing.T) (*REST, *etcd3testing.EtcdTestServer) {
 		ResourcePrefix:          "clustercidrs",
 	}
 
-	clusterCIDRStorage, err := NewREST(scheme, restOptions)
+	clusterCIDRStorage, err := NewREST(restOptions)
 	if err != nil {
 		t.Fatalf("unexpected error from REST storage: %v", err)
 	}
 	return clusterCIDRStorage, server
 }
 
-func newEtcdStorageForResource(t *testing.T, scheme *runtime.Scheme, resource schema.GroupResource) (*storagebackend.ConfigForResource, *etcd3testing.EtcdTestServer) {
+func newEtcdStorageForResource(t *testing.T, resource schema.GroupResource) (*storagebackend.ConfigForResource, *etcd3testing.EtcdTestServer) {
 	t.Helper()
 
 	server, config := etcd3testing.NewUnsecuredEtcd3TestClientServer(t)
 	etcdOptions := options.NewEtcdOptions(config)
-	factory, err := newStorageFactory(scheme, etcdOptions)
+	factory, err := newStorageFactory(etcdOptions)
 	if err != nil {
 		t.Fatalf("Error while making storage factory: %v", err)
 	}
@@ -197,15 +194,14 @@ func newEtcdStorageForResource(t *testing.T, scheme *runtime.Scheme, resource sc
 }
 
 // new returns a new storage factory created from the completed storage factory configuration.
-func newStorageFactory(scheme *runtime.Scheme, opts *options.EtcdOptions) (*serverstorage.DefaultStorageFactory, error) {
-	codecs := serializer.NewCodecFactory(scheme)
-	defaultResourceEncoding := serverstorage.NewDefaultResourceEncodingConfig(scheme)
+func newStorageFactory(opts *options.EtcdOptions) (*serverstorage.DefaultStorageFactory, error) {
+	defaultResourceEncoding := serverstorage.NewDefaultResourceEncodingConfig(genscheme.Scheme)
 	resourceEncodingOverrides := []schema.GroupVersionResource{v1.Resource("clustercidrs").WithVersion("v1")}
 	resourceEncodingConfig := resourceconfig.MergeResourceEncodingConfigs(defaultResourceEncoding, resourceEncodingOverrides)
 	storageFactory := serverstorage.NewDefaultStorageFactory(
 		opts.StorageConfig,
 		opts.DefaultStorageMediaType,
-		codecs,
+		genscheme.Codecs,
 		resourceEncodingConfig,
 		serverstorage.NewResourceConfig(),
 		nil) // SpecialDefaultResourcePrefixes

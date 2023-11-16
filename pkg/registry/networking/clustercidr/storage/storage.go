@@ -32,18 +32,16 @@ type REST struct {
 }
 
 // NewREST returns a RESTStorage object that will work against ClusterCIDRs.
-func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*REST, error) {
-	strategy := clustercidr.NewStrategy(scheme)
-
+func NewREST(optsGetter generic.RESTOptionsGetter) (*REST, error) {
 	store := &genericregistry.Store{
 		NewFunc:                   func() runtime.Object { return &v1.ClusterCIDR{} },
 		NewListFunc:               func() runtime.Object { return &v1.ClusterCIDRList{} },
 		DefaultQualifiedResource:  v1.Resource("clustercidrs"),
 		SingularQualifiedResource: v1.Resource("clustercidr"),
 
-		CreateStrategy: strategy,
-		UpdateStrategy: strategy,
-		DeleteStrategy: strategy,
+		CreateStrategy: clustercidr.Strategy,
+		UpdateStrategy: clustercidr.Strategy,
+		DeleteStrategy: clustercidr.Strategy,
 
 		TableConvertor: rest.NewDefaultTableConvertor(v1.Resource("clustercidrs")),
 		// todo(mneverov): copy printers over.

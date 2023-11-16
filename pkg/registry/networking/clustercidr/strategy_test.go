@@ -23,10 +23,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
 func newClusterCIDR() v1.ClusterCIDR {
@@ -63,30 +60,26 @@ func TestClusterCIDRStrategy(t *testing.T) {
 		Resource:   "clustercidrs",
 	}
 	ctx = genericapirequest.WithRequestInfo(ctx, &apiRequest)
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(v1.AddToScheme(scheme))
-	strategy := NewStrategy(scheme)
 
-	if strategy.NamespaceScoped() {
+	if Strategy.NamespaceScoped() {
 		t.Errorf("ClusterCIDRs must be cluster scoped")
 	}
-	if strategy.AllowCreateOnUpdate() {
+	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("ClusterCIDRs should not allow create on update")
 	}
 
 	ccc := newClusterCIDR()
-	strategy.PrepareForCreate(ctx, &ccc)
+	Strategy.PrepareForCreate(ctx, &ccc)
 
-	errs := strategy.Validate(ctx, &ccc)
+	errs := Strategy.Validate(ctx, &ccc)
 	if len(errs) != 0 {
 		t.Errorf("Unexpected error validating %v", errs)
 	}
 	invalidCCC := newClusterCIDR()
 	invalidCCC.ResourceVersion = "4"
 	invalidCCC.Spec = v1.ClusterCIDRSpec{}
-	strategy.PrepareForUpdate(ctx, &invalidCCC, &ccc)
-	errs = strategy.ValidateUpdate(ctx, &invalidCCC, &ccc)
+	Strategy.PrepareForUpdate(ctx, &invalidCCC, &ccc)
+	errs = Strategy.ValidateUpdate(ctx, &invalidCCC, &ccc)
 	if len(errs) == 0 {
 		t.Errorf("Expected a validation error")
 	}

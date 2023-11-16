@@ -21,6 +21,7 @@ import (
 
 	v1 "github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1"
 	"github.com/mneverov/cluster-cidr-controller/pkg/apis/clustercidr/v1/validation"
+	genscheme "github.com/mneverov/cluster-cidr-controller/pkg/client/clientset/versioned/scheme"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -33,10 +34,8 @@ type clusterCIDRStrategy struct {
 	names.NameGenerator
 }
 
-// NewStrategy creates a new instance clusterCIDRStrategy that validates clusterCIDR objects update and creation.
-func NewStrategy(typer runtime.ObjectTyper) clusterCIDRStrategy {
-	return clusterCIDRStrategy{typer, names.SimpleNameGenerator}
-}
+// Strategy is the default logic that applies when creating and updating clusterCIDR objects.
+var Strategy = clusterCIDRStrategy{genscheme.Scheme, names.SimpleNameGenerator}
 
 // NamespaceScoped returns false because all clusterCIDRs do not need to be within a namespace.
 func (clusterCIDRStrategy) NamespaceScoped() bool {
