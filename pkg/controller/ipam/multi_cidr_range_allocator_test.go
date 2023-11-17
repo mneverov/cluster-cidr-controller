@@ -1776,7 +1776,7 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 	client, cccController := newController(ctx)
 	for _, tc := range tests {
 		cccController.clusterCIDRStore.Add(tc.ccc)
-		err := cccController.syncClusterCIDRByKey(ctx, tc.ccc.Name)
+		err := cccController.syncClusterCIDR(ctx, tc.ccc.Name)
 		if tc.wantErr {
 			assert.Error(t, err)
 			continue
@@ -1791,7 +1791,7 @@ func TestSyncClusterCIDRCreate(t *testing.T) {
 	}
 }
 
-// Ensure syncClusterCIDRByKey for ClusterCIDR delete removes the ClusterCIDR.
+// Ensure syncClusterCIDR for ClusterCIDR delete removes the ClusterCIDR.
 func TestSyncClusterCIDRDelete(t *testing.T) {
 	_, ctx := ktesting.NewTestContext(t)
 	_, cccController := newController(ctx)
@@ -1799,17 +1799,17 @@ func TestSyncClusterCIDRDelete(t *testing.T) {
 	testCCC := makeClusterCIDR("testing-1", "10.1.0.0/16", "", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"}))
 
 	cccController.clusterCIDRStore.Add(testCCC)
-	err := cccController.syncClusterCIDRByKey(ctx, testCCC.Name)
+	err := cccController.syncClusterCIDR(ctx, testCCC.Name)
 	assert.NoError(t, err)
 
 	deletionTimestamp := metav1.Now()
 	testCCC.DeletionTimestamp = &deletionTimestamp
 	cccController.clusterCIDRStore.Update(testCCC)
-	err = cccController.syncClusterCIDRByKey(ctx, testCCC.Name)
+	err = cccController.syncClusterCIDR(ctx, testCCC.Name)
 	assert.NoError(t, err)
 }
 
-// Ensure syncClusterCIDRByKey for ClusterCIDR delete does not remove ClusterCIDR
+// Ensure syncClusterCIDR for ClusterCIDR delete does not remove ClusterCIDR
 // if a node is associated with the ClusterCIDR.
 func TestSyncClusterCIDRDeleteWithNodesAssociated(t *testing.T) {
 	_, ctx := ktesting.NewTestContext(t)
@@ -1818,7 +1818,7 @@ func TestSyncClusterCIDRDeleteWithNodesAssociated(t *testing.T) {
 	testCCC := makeClusterCIDR("testing-1", "10.1.0.0/16", "", 8, makeNodeSelector("foo", corev1.NodeSelectorOpIn, []string{"bar"}))
 
 	cccController.clusterCIDRStore.Add(testCCC)
-	err := cccController.syncClusterCIDRByKey(ctx, testCCC.Name)
+	err := cccController.syncClusterCIDR(ctx, testCCC.Name)
 	assert.NoError(t, err)
 
 	// Mock the IPAM controller behavior associating node with ClusterCIDR.
@@ -1832,7 +1832,7 @@ func TestSyncClusterCIDRDeleteWithNodesAssociated(t *testing.T) {
 	deletionTimestamp := metav1.Now()
 	createdCCC.DeletionTimestamp = &deletionTimestamp
 	cccController.clusterCIDRStore.Update(createdCCC)
-	err = cccController.syncClusterCIDRByKey(ctx, createdCCC.Name)
+	err = cccController.syncClusterCIDR(ctx, createdCCC.Name)
 	assert.Error(t, err, fmt.Sprintf("ClusterCIDR %s marked as terminating, won't be deleted until all associated nodes are deleted", createdCCC.Name))
 }
 

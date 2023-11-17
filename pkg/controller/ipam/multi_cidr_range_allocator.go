@@ -81,6 +81,10 @@ const (
 	cidrUpdateRetries = 3
 )
 
+// +kubebuilder:rbac:groups=networking.x-k8s.io,resources=clustercidrs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+
 // CIDRAllocator is an interface implemented by things that know how
 // to allocate/occupy/recycle CIDR for nodes.
 type CIDRAllocator interface {
@@ -384,7 +388,7 @@ func (r *multiCIDRRangeAllocator) processNextCIDRWorkItem(ctx context.Context) b
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
 		// Foo resource to be synced.
-		if err := r.syncClusterCIDRByKey(ctx, key); err != nil {
+		if err := r.syncClusterCIDR(ctx, key); err != nil {
 			// Put the item back on the cidrQueue to handle any transient errors.
 			r.cidrQueue.AddRateLimited(key)
 			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
@@ -491,7 +495,7 @@ func needToAddFinalizer(obj metav1.Object, finalizer string) bool {
 		finalizer, nil)
 }
 
-func (r *multiCIDRRangeAllocator) syncClusterCIDRByKey(ctx context.Context, key string) error {
+func (r *multiCIDRRangeAllocator) syncClusterCIDR(ctx context.Context, key string) error {
 	startTime := time.Now()
 	logger := klog.FromContext(ctx)
 	defer func() {
@@ -507,20 +511,6 @@ func (r *multiCIDRRangeAllocator) syncClusterCIDRByKey(ctx context.Context, key 
 	if err != nil {
 		return err
 	}
-
-	// Check the DeletionTimestamp to determine if object is under deletion.
-	if !clusterCIDR.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, clusterCIDR)
-	}
-	return r.reconcileCreate(ctx, clusterCIDR)
-}
-
-func (r *multiCIDRRangeAllocator) syncClusterCIDR(ctx context.Context, clusterCIDR *v1.ClusterCIDR) error {
-	startTime := time.Now()
-	logger := klog.FromContext(ctx)
-	defer func() {
-		logger.V(4).Info("Finished syncing clusterCIDR request", "name", clusterCIDR.Name, "latency", time.Since(startTime))
-	}()
 
 	// Check the DeletionTimestamp to determine if object is under deletion.
 	if !clusterCIDR.DeletionTimestamp.IsZero() {
