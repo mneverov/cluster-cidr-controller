@@ -21,21 +21,17 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const defaultResync = 30 * time.Second
+func main() {
+	var (
+		apiServerURL    string
+		kubeconfig      string
+		healthProbeAddr string
+	)
 
-var (
-	apiServerURL    string
-	kubeconfig      string
-	healthProbeAddr string
-)
-
-func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&apiServerURL, "apiserver", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&healthProbeAddr, "health-probe-address", ":8081", "Specifies the TCP address for the health server to listen on.")
-}
 
-func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
 
@@ -60,6 +56,7 @@ func main() {
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
+	const defaultResync = 30 * time.Second
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, defaultResync)
 	sharedInformerFactory := informers.NewSharedInformerFactory(cidrClient, defaultResync)
 
