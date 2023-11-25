@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -25,13 +24,15 @@ import (
 const defaultResync = 30 * time.Second
 
 var (
-	apiServerURL string
-	kubeconfig   string
+	apiServerURL    string
+	kubeconfig      string
+	healthProbeAddr string
 )
 
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&apiServerURL, "apiserver", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&healthProbeAddr, "health-probe-address", ":8081", "Specifies the TCP address for the health server to listen on.")
 }
 
 func main() {
@@ -83,20 +84,18 @@ func main() {
 	kubeInformerFactory.Start(ctx.Done())
 	sharedInformerFactory.Start(ctx.Done())
 
-	// serverPort must match .Values.service.port
-	const serverPort = 8081
-	server := startHealthProbeServer(serverPort, logger)
+	server := startHealthProbeServer(healthProbeAddr, logger)
 	cidrController.Run(ctx)
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Error(err, "failed to shut down health server")
 	}
 }
 
-func startHealthProbeServer(port int, logger klog.Logger) *http.Server {
+func startHealthProbeServer(addr string, logger klog.Logger) *http.Server {
 	const defaultTimeout = 30 * time.Second
 	mux := http.NewServeMux()
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", port),
+		Addr:         addr,
 		Handler:      mux,
 		ReadTimeout:  defaultTimeout,
 		WriteTimeout: defaultTimeout,
