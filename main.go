@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
+	"net/http"
 	"time"
 
 	clientset "github.com/mneverov/cluster-cidr-controller/pkg/client/clientset/versioned"
@@ -80,5 +83,44 @@ func main() {
 	kubeInformerFactory.Start(ctx.Done())
 	sharedInformerFactory.Start(ctx.Done())
 
+	// serverPort must match .Values.service.port
+	const serverPort = 8081
+	server := startHealthProbeServer(serverPort, logger)
 	cidrController.Run(ctx)
+	if err := server.Shutdown(ctx); err != nil {
+		logger.Error(err, "failed to shut down health server")
+	}
+}
+
+func startHealthProbeServer(port int, logger klog.Logger) *http.Server {
+	const defaultTimeout = 30 * time.Second
+	mux := http.NewServeMux()
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", port),
+		Handler:      mux,
+		ReadTimeout:  defaultTimeout,
+		WriteTimeout: defaultTimeout,
+		IdleTimeout:  defaultTimeout,
+	}
+
+	mux.Handle("/readyz", makeHealthHandler())
+	mux.Handle("/healthz", makeHealthHandler())
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error(err, "an error occurred after stopping the health server")
+		}
+	}()
+
+	return server
+}
+
+// makeHealthHandler returns 200/OK when healthy
+func makeHealthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		w.WriteHeader(http.StatusOK)
+	}
 }
