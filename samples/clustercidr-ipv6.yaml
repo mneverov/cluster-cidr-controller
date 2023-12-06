@@ -1,5 +1,3 @@
-clustercidr:
-  yaml:
 apiVersion: networking.x-k8s.io/v1
 kind: ClusterCIDR
 metadata:
