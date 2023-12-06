@@ -1,0 +1,9 @@
+clustercidr:
+  yaml:
+apiVersion: networking.x-k8s.io/v1
+kind: ClusterCIDR
+metadata:
+  name: clustercidr-test
+spec:
+  perNodeHostBits: 8
+  ipv6: 2001:db8::/110
