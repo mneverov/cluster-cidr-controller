@@ -120,15 +120,10 @@ jobs:
         # install kindnet because of bug https://github.com/kubernetes-sigs/kind/pull/3438
         kubectl apply -f https://raw.githubusercontent.com/aojea/kindnet/master/install-kindnet.yaml
         /usr/local/bin/kubectl get nodes -o wide
-        /usr/local/bin/kubectl get pods -A
-        sleep 20
-        /usr/local/bin/kubectl get po --namespace=kube-system -l app=kindnet -oyaml
-        /usr/local/bin/kubectl describe po --namespace=kube-system -l app=kindnet
-        /usr/local/bin/kubectl get pods -A
-        /usr/local/bin/kubectl wait --timeout=1m --for=condition=ready pods --namespace=kube-system -l app=kindnet
+        /usr/local/bin/kubectl get pods -A -o wide
         /usr/local/bin/kubectl wait --timeout=1m --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns
         /usr/local/bin/kubectl get nodes -o wide
-        /usr/local/bin/kubectl get pods -A
+        /usr/local/bin/kubectl get pods -A -o wide
 
     - name: Workaround CoreDNS for IPv6 airgapped
       if: ${{ matrix.ipFamily == 'ipv6' }}
