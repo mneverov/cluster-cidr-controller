@@ -8,3 +8,5 @@ nodes:
     controllerManager:
       extraArgs:
         allocate-node-cidrs: "false"
+- role: worker
+- role: worker
